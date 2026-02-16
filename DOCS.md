@@ -86,6 +86,7 @@ Or simply `whitelistplus` (no block) to use the defaults.
 | `block`       | Returns **403 Forbidden**                          |
 | `drop`        | Hijacks and closes the TCP connection silently      |
 | `placeholder` | Returns a custom HTML page with the configured status |
+| `passthrough` | Registers IP and sends Telegram, then continues to next handler (useful with matcher-based routing) |
 
 ---
 
@@ -256,6 +257,39 @@ example.com {
 ```
 
 > Available template variables: `{{.IP}}`, `{{.Host}}`, `{{.Path}}`, `{{.UserAgent}}`, `{{.Time}}`
+
+### 6 — Passthrough action with file_server
+
+```caddyfile
+{
+    order whitelistplus before basicauth
+
+    whitelistplus {
+        db_path          /data/whitelist.db
+        telegram_token   {env.TG_BOT_TOKEN}
+        telegram_chat_id {env.TG_CHAT_ID}
+    }
+}
+
+example.com {
+    @approved whitelisted
+    @blocked  not whitelisted
+
+    handle @approved {
+        reverse_proxy localhost:8080
+    }
+
+    handle @blocked {
+        # Register IP, send Telegram, then serve static file
+        whitelistplus {
+            action passthrough
+        }
+        root * /srv/blocked
+        rewrite * /blocked.html
+        file_server
+    }
+}
+```
 
 ---
 

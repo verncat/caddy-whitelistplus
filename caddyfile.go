@@ -80,7 +80,7 @@ func parseGlobalOption(d *caddyfile.Dispenser, existingVal interface{}) (interfa
 // Handler directive: configures per-route behaviour.
 //
 //	whitelistplus {
-//	    action             <block|drop|placeholder>
+//	    action             <block|drop|placeholder|passthrough>
 //	    placeholder        "<html>…</html>"
 //	    placeholder_status <code>
 //	}

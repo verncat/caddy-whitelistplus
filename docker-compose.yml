@@ -11,6 +11,7 @@ services:
       - "2019:2019"  # Admin API
     volumes:
       - ./Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - ./blocked:/srv/blocked:ro
       - ./data:/data
       - caddy_data:/data/caddy
       - caddy_config:/config

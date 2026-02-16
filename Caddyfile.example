@@ -22,25 +22,25 @@
 }
 
 :80 {
-    whitelistplus {
-        action             placeholder
-        placeholder_status 403
-        placeholder        <<HTML
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <title>Access Pending</title>
-            </head>
-            <body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;margin:0;background:#f5f5f5">
-                <div style="text-align:center;padding:2rem;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1)">
-                    <h1 style="margin:0 0 1rem 0">🔒 Access Pending Approval</h1>
-                    <p style="color:#666;margin:0">Your IP address has been recorded and an admin has been notified.</p>
-                </div>
-            </body>
-            </html>
-            HTML
+    # Define matchers
+    @approved whitelisted
+    @blocked  not whitelisted
+    
+    # Route for approved IPs
+    handle @approved {
+        respond "Hello from Caddy with WhitelistPlus! ✅" 200
     }
-
-    respond "Hello from Caddy with WhitelistPlus! ✅" 200
+    
+    # Route for blocked/pending IPs  
+    handle @blocked {
+        # Register IP and send Telegram, then continue to file_server
+        whitelistplus {
+            action passthrough
+        }
+        
+        # Serve static file
+        root * /srv/blocked
+        rewrite * /blocked.html
+        file_server
+    }
 }

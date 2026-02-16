@@ -24,6 +24,7 @@ type Handler struct {
 	//   block       — return 403 (default)
 	//   drop        — silently close the connection
 	//   placeholder — return a custom HTML page
+	//   passthrough — register IP and continue to next handler
 	Action string `json:"action,omitempty"`
 
 	// HTML body returned when action is "placeholder".
@@ -71,9 +72,9 @@ func (h *Handler) Provision(ctx caddy.Context) error {
 // Validate checks the handler configuration.
 func (h *Handler) Validate() error {
 	switch h.Action {
-	case "block", "drop", "placeholder":
+	case "block", "drop", "placeholder", "passthrough":
 	default:
-		return fmt.Errorf("whitelistplus: invalid action %q (block|drop|placeholder)", h.Action)
+		return fmt.Errorf("whitelistplus: invalid action %q (block|drop|placeholder|passthrough)", h.Action)
 	}
 	return nil
 }
@@ -130,6 +131,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 		w.WriteHeader(h.PlaceholderStatus)
 		_, _ = w.Write([]byte(h.Placeholder))
 		return nil
+
+	case "passthrough":
+		// Just register the IP and continue to next handler
+		return next.ServeHTTP(w, r)
 
 	default: // block
 		return caddyhttp.Error(http.StatusForbidden, nil)
