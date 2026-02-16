@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  caddy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+      - "8443:443"
+      - "2019:2019"  # Admin API
+    volumes:
+      - ./Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - ./data:/data
+      - caddy_data:/data/caddy
+      - caddy_config:/config
+    environment:
+      # Optional: set these to enable Telegram notifications
+      - TG_BOT_TOKEN=${TG_BOT_TOKEN:-}
+      - TG_CHAT_ID=${TG_CHAT_ID:-}
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
