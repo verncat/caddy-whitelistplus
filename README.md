@@ -27,6 +27,16 @@ xcaddy build --with github.com/verncat/caddy-whitelistplus=.
         db_path          ./whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        # Optional: Custom message template
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 }
 
@@ -37,6 +47,10 @@ example.com {
     reverse_proxy localhost:8080
 }
 ```
+
+Aand now you can see requests for access here :)
+
+![demonstration telegram message](repo/image.png)
 
 ## Advanced: Matcher-based routing with passthrough
 
@@ -50,6 +64,16 @@ Use the `whitelisted` matcher combined with `passthrough` action for maximum fle
         db_path          ./whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        # Optional: Custom message template
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 }
 
