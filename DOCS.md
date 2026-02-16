@@ -7,7 +7,7 @@ When a new IP connects, the plugin:
 
 1. Records it in a local SQLite database with status **pending**.
 2. Sends a Telegram message with **Approve / Deny** buttons.
-3. Blocks the request (or shows a placeholder page, or drops the connection).
+3. Blocks the request (or shows a placeholder page, drops the connection, or passes through to next handler).
 
 Once the admin taps **Approve** in Telegram the IP is whitelisted and all
 subsequent requests pass through immediately.
@@ -41,12 +41,14 @@ Telegram bot used by all handler / matcher instances.
 | Option             | Required | Default          | Description                          |
 |--------------------|----------|------------------|--------------------------------------|
 | `db_path`          | no       | `whitelist.db`   | Path to the SQLite database file     |
-| `telegram_token`   | no*      | —                | Bot token from @BotFather            |
-| `telegram_chat_id` | no*      | —                | Numeric chat ID for approval messages|
+| `telegram_token`   | no*      | —                | Bot token from @BotFather (supports `{env.VAR}` format) |
+| `telegram_chat_id` | no*      | —                | Numeric chat ID for approval messages (supports `{env.VAR}` format) |
 | `telegram_message` | no       | built-in template| Custom message template (supports `{{.IP}}`, `{{.Host}}`, `{{.Path}}`, `{{.UserAgent}}`, `{{.Time}}`)|
 
 > \* Without Telegram credentials the plugin still blocks unknown IPs but no
 > notifications are sent.
+> 
+> **Note:** All options support Caddy's `{env.VARIABLE}` placeholders for reading environment variables.
 
 ---
 
@@ -110,7 +112,9 @@ handle @approved {
 }
 
 handle {
-    whitelistplus          # sends Telegram notification on first visit
+    whitelistplus {
+        action passthrough  # Register IP, send Telegram notification, then continue
+    }
     respond "Denied" 403
 }
 ```
@@ -129,6 +133,16 @@ handle {
         db_path          /data/whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        # Optional: Custom message template
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 }
 
@@ -160,6 +174,15 @@ example.com {
         db_path          /data/whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 }
 
@@ -182,6 +205,15 @@ secret.example.com {
         db_path          /data/whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 }
 
@@ -193,7 +225,9 @@ example.com {
     }
 
     handle {
-        whitelistplus
+        whitelistplus {
+            action passthrough  # Register IP, send Telegram, then continue
+        }
         respond "Your IP is not approved yet." 403
     }
 }
@@ -209,6 +243,15 @@ example.com {
         db_path          /data/whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 }
 
@@ -251,7 +294,10 @@ TMPL
 }
 
 example.com {
-    whitelistplus
+    whitelistplus {
+        action placeholder
+        placeholder "Your access request has been logged. Please wait for approval."
+    }
     reverse_proxy localhost:8080
 }
 ```
@@ -268,6 +314,15 @@ example.com {
         db_path          /data/whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 }
 
@@ -334,10 +389,11 @@ When a new IP hits the server you will receive a message like:
 ```
 🔒 WhitelistPlus — New Access Request
 
-IP:   203.0.113.42
-Host: example.com
-Path: /
-Time: 2026-02-16 12:00:00 UTC
+IP:         203.0.113.42
+Host:       example.com
+Path:       /
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)...
+Time:       2026-02-16 12:00:00 UTC
 
 [✅ Approve]  [❌ Deny]
 ```
