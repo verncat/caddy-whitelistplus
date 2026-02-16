@@ -1,4 +1,4 @@
-module github.com/veronika/caddy-whitelistplus
+module github.com/verncat/caddy-whitelistplus
 
 go 1.22.3
 

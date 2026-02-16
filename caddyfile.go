@@ -20,8 +20,9 @@ func init() {
 //	{
 //	    whitelistplus {
 //	        db_path          ./whitelist.db
-//	        telegram_token   <token>
-//	        telegram_chat_id <chat_id>
+//	        telegram_token   <token>         # or {env.TG_BOT_TOKEN}
+//	        telegram_chat_id <chat_id>       # or {env.TG_CHAT_ID}
+//	        telegram_message <template>      # Optional: {{.IP}}, {{.Host}}, {{.Path}}, {{.UserAgent}}, {{.Time}}
 //	    }
 //	}
 //
@@ -54,11 +55,14 @@ func parseGlobalOption(d *caddyfile.Dispenser, existingVal interface{}) (interfa
 				if !d.NextArg() {
 					return nil, d.ArgErr()
 				}
-				id, err := strconv.ParseInt(d.Val(), 10, 64)
-				if err != nil {
-					return nil, d.Errf("invalid telegram_chat_id: %v", err)
+				// Store as string to allow env var substitution in Provision
+				app.TelegramChatIDRaw = d.Val()
+
+			case "telegram_message":
+				if !d.NextArg() {
+					return nil, d.ArgErr()
 				}
-				app.TelegramChatID = id
+				app.TelegramMessage = d.Val()
 
 			default:
 				return nil, d.Errf("unrecognised whitelistplus option: %s", d.Val())

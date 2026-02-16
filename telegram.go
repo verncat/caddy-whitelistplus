@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"text/template"
 	"time"
 
 	"go.uber.org/zap"
@@ -16,21 +17,33 @@ import (
 // TelegramBot interacts with the Telegram Bot API to send
 // approval requests and process admin callbacks.
 type TelegramBot struct {
-	token  string
-	chatID int64
-	store  *Store
-	logger *zap.Logger
-	client *http.Client
+	token           string
+	chatID          int64
+	store           *Store
+	logger          *zap.Logger
+	client          *http.Client
+	messageTemplate *template.Template
 }
 
 // NewTelegramBot creates a new TelegramBot instance.
-func NewTelegramBot(token string, chatID int64, store *Store, logger *zap.Logger) *TelegramBot {
+func NewTelegramBot(token string, chatID int64, messageTemplate string, store *Store, logger *zap.Logger) *TelegramBot {
+	var tmpl *template.Template
+	if messageTemplate != "" {
+		var err error
+		tmpl, err = template.New("telegram").Parse(messageTemplate)
+		if err != nil {
+			logger.Error("telegram: failed to parse message template, using default", zap.Error(err))
+			tmpl = nil
+		}
+	}
+
 	return &TelegramBot{
-		token:  token,
-		chatID: chatID,
-		store:  store,
-		logger: logger,
-		client: &http.Client{Timeout: 35 * time.Second},
+		token:           token,
+		chatID:          chatID,
+		store:           store,
+		logger:          logger,
+		client:          &http.Client{Timeout: 35 * time.Second},
+		messageTemplate: tmpl,
 	}
 }
 
@@ -40,16 +53,28 @@ func (t *TelegramBot) apiURL(method string) string {
 
 // SendApprovalRequest sends a Telegram message with Approve/Deny
 // inline buttons for the given IP.
-func (t *TelegramBot) SendApprovalRequest(ip, host, path string) {
-	text := fmt.Sprintf(
-		"🔒 *WhitelistPlus — New Access Request*\n\n"+
-			"*IP:* `%s`\n"+
-			"*Host:* `%s`\n"+
-			"*Path:* `%s`\n"+
-			"*Time:* `%s`",
-		ip, host, path,
-		time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
-	)
+func (t *TelegramBot) SendApprovalRequest(ip, host, path, userAgent string) {
+	var text string
+
+	// Use custom template if provided, otherwise use default
+	if t.messageTemplate != nil {
+		data := map[string]string{
+			"IP":        ip,
+			"Host":      host,
+			"Path":      path,
+			"UserAgent": userAgent,
+			"Time":      time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
+		}
+		var buf bytes.Buffer
+		if err := t.messageTemplate.Execute(&buf, data); err != nil {
+			t.logger.Error("telegram: failed to execute template, using default", zap.Error(err))
+			text = t.defaultMessage(ip, host, path, userAgent)
+		} else {
+			text = buf.String()
+		}
+	} else {
+		text = t.defaultMessage(ip, host, path, userAgent)
+	}
 
 	payload := map[string]interface{}{
 		"chat_id":    t.chatID,
@@ -73,6 +98,20 @@ func (t *TelegramBot) SendApprovalRequest(ip, host, path string) {
 	}
 	defer resp.Body.Close()
 	io.Copy(io.Discard, resp.Body)
+}
+
+// defaultMessage returns the default Telegram notification message
+func (t *TelegramBot) defaultMessage(ip, host, path, userAgent string) string {
+	return fmt.Sprintf(
+		"🔒 *WhitelistPlus — New Access Request*\n\n"+
+			"*IP:* `%s`\n"+
+			"*Host:* `%s`\n"+
+			"*Path:* `%s`\n"+
+			"*User-Agent:* `%s`\n"+
+			"*Time:* `%s`",
+		ip, host, path, userAgent,
+		time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
+	)
 }
 
 // Poll starts long-polling the Telegram Bot API for callback

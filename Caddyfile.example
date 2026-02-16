@@ -5,6 +5,16 @@
         db_path          /data/whitelist.db
         telegram_token   {env.TG_BOT_TOKEN}
         telegram_chat_id {env.TG_CHAT_ID}
+        
+        # Optional: Custom message template
+        telegram_message <<TMPL
+          🚨 *New Connection*
+          IP: `{{.IP}}`
+          Host: {{.Host}}
+          Path: {{.Path}}
+          User-Agent: `{{.UserAgent}}`
+          Time: {{.Time}}
+          TMPL
     }
 
     # Admin API

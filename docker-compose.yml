@@ -14,6 +14,8 @@ services:
       - ./data:/data
       - caddy_data:/data/caddy
       - caddy_config:/config
+    env_file:
+      - .env
     environment:
       # Optional: set these to enable Telegram notifications
       - TG_BOT_TOKEN=${TG_BOT_TOKEN:-}

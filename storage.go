@@ -46,13 +46,17 @@ func NewStore(dbPath string) (*Store, error) {
 			requested_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
 			approved_at   DATETIME,
 			host          TEXT,
-			path          TEXT
+			path          TEXT,
+			user_agent    TEXT
 		)
 	`)
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
+
+	// Add user_agent column if it doesn't exist (migration for existing databases)
+	_, _ = db.Exec(`ALTER TABLE whitelist ADD COLUMN user_agent TEXT`)
 
 	return &Store{db: db}, nil
 }
@@ -70,10 +74,10 @@ func (s *Store) GetIPStatus(ip string) (string, error) {
 
 // AddIP inserts a new IP with the given status. Does nothing if
 // the IP already exists (INSERT OR IGNORE).
-func (s *Store) AddIP(ip, status, host, path string) error {
+func (s *Store) AddIP(ip, status, host, path, userAgent string) error {
 	_, err := s.db.Exec(
-		"INSERT OR IGNORE INTO whitelist (ip, status, requested_at, host, path) VALUES (?, ?, ?, ?, ?)",
-		ip, status, time.Now().UTC(), host, path,
+		"INSERT OR IGNORE INTO whitelist (ip, status, requested_at, host, path, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
+		ip, status, time.Now().UTC(), host, path, userAgent,
 	)
 	return err
 }

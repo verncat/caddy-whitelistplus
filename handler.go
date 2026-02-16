@@ -96,12 +96,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 
 	// First time seeing this IP — register it and notify via Telegram.
 	if status == StatusUnknown {
-		if err := h.app.store.AddIP(clientIP, StatusPending, r.Host, r.URL.Path); err != nil {
+		userAgent := r.Header.Get("User-Agent")
+		if err := h.app.store.AddIP(clientIP, StatusPending, r.Host, r.URL.Path, userAgent); err != nil {
 			h.logger.Error("failed to register IP", zap.Error(err))
 		}
 
 		if h.app.tgBot != nil {
-			go h.app.tgBot.SendApprovalRequest(clientIP, r.Host, r.URL.Path)
+			go h.app.tgBot.SendApprovalRequest(clientIP, r.Host, r.URL.Path, userAgent)
 		}
 
 		h.logger.Info("new IP requesting access",

@@ -33,6 +33,7 @@ Telegram bot used by all handler / matcher instances.
         db_path          <path>       # SQLite file (default: whitelist.db)
         telegram_token   <token>      # Telegram Bot API token
         telegram_chat_id <id>         # Chat / group ID for notifications
+        telegram_message <template>   # Custom message template (optional)
     }
 }
 ```
@@ -42,6 +43,7 @@ Telegram bot used by all handler / matcher instances.
 | `db_path`          | no       | `whitelist.db`   | Path to the SQLite database file     |
 | `telegram_token`   | no*      | —                | Bot token from @BotFather            |
 | `telegram_chat_id` | no*      | —                | Numeric chat ID for approval messages|
+| `telegram_message` | no       | built-in template| Custom message template (supports `{{.IP}}`, `{{.Host}}`, `{{.Path}}`, `{{.UserAgent}}`, `{{.Time}}`)|
 
 > \* Without Telegram credentials the plugin still blocks unknown IPs but no
 > notifications are sent.
@@ -223,6 +225,38 @@ example.com {
 }
 ```
 
+### 5 — Custom Telegram message template
+
+```caddyfile
+{
+    order whitelistplus before basicauth
+
+    whitelistplus {
+        db_path          /data/whitelist.db
+        telegram_token   {env.TG_BOT_TOKEN}
+        telegram_chat_id {env.TG_CHAT_ID}
+        telegram_message <<TMPL
+🚨 *New Connection Attempt*
+
+📍 *IP Address:* `{{.IP}}`
+🌐 *Hostname:* {{.Host}}
+📂 *Requested Path:* {{.Path}}
+🖥️ *User-Agent:* `{{.UserAgent}}`
+⏰ *Timestamp:* {{.Time}}
+
+Please review and take action.
+TMPL
+    }
+}
+
+example.com {
+    whitelistplus
+    reverse_proxy localhost:8080
+}
+```
+
+> Available template variables: `{{.IP}}`, `{{.Host}}`, `{{.Path}}`, `{{.UserAgent}}`, `{{.Time}}`
+
 ---
 
 ## SQLite schema
@@ -236,7 +270,8 @@ CREATE TABLE IF NOT EXISTS whitelist (
     requested_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     approved_at   DATETIME,
     host          TEXT,
-    path          TEXT
+    path          TEXT,
+    user_agent    TEXT
 );
 ```
 

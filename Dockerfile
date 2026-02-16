@@ -1,15 +1,20 @@
 # Build stage
 FROM caddy:2.9.1-builder AS builder
 
-# Build Caddy with WhitelistPlus plugin
+# Copy plugin source files
+WORKDIR /build
+COPY go.mod go.sum ./
+COPY *.go ./
+
+# Build Caddy with local WhitelistPlus plugin
 RUN xcaddy build \
-    --with github.com/veronika/caddy-whitelistplus=/app
+    --with github.com/verncat/caddy-whitelistplus=/build
 
 # Runtime stage
 FROM caddy:2.9.1
 
 # Copy the custom Caddy build
-COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+COPY --from=builder /build/caddy /usr/bin/caddy
 
 # Create directory for database
 RUN mkdir -p /data
